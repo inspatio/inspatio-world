@@ -198,6 +198,12 @@ bash run_test_pipeline.sh \
 
 This project is licensed under the [Apache-2.0 License](https://github.com/inspatio/worldfm/blob/main/LICENSE). Note that this license only applies to code in our library, the dependencies and submodules of which ([Depth-Anything-3](https://github.com/ByteDance-Seed/depth-anything-3), [Florence-2](https://github.com/anyantudre/Florence-2-Vision-Language-Model)) are separate and individually licensed.
 
+---
+
+**Note:**
+- The current release of InSpatio‑World is an unoptimized version. The fully optimized version, consistent with our online live demo and reaching ~24 FPS on a professional GPU and 10 FPS on an RTX 4090, will be released together with our technical report within 2 weeks.
+
+
 ## Citation
 
 If you use InSpatio-World in your research, please use the following BibTeX entry.
