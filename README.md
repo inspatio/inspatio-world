@@ -201,7 +201,7 @@ This project is licensed under the [Apache-2.0 License](https://github.com/inspa
 ---
 
 **Note:**
-- The current release of InSpatio‑World is an unoptimized version. The fully optimized version, consistent with our online live demo and reaching ~24 FPS on a professional GPU and 10 FPS on an RTX 4090, will be released together with our technical report within 2 weeks.
+- The current release of InSpatio‑World is a version that has not yet been specifically optimized for speed.  The fully optimized version, consistent with our online live demo and reaching ~24 FPS on a professional GPU and 10 FPS on an RTX 4090, will be released together with our technical report within 2 weeks.
 
 
 ## Citation
