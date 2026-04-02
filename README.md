@@ -3,7 +3,7 @@
 
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-Model-yellow?logo=huggingface)](https://huggingface.co/inspatio/world)
 [![Project Page](https://img.shields.io/badge/Project-Page-green)](https://inspatio.github.io/inspatio-world/)
-[![License](https://img.shields.io/badge/License-Apache--2.0-orange)](https://github.com/inspatio/worldfm/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache--2.0-orange)](https://github.com/inspatio/inspatio-world/blob/main/LICENSE)
 
 ## Requirements
 
@@ -196,7 +196,7 @@ bash run_test_pipeline.sh \
 
 ## License
 
-This project is licensed under the [Apache-2.0 License](https://github.com/inspatio/worldfm/blob/main/LICENSE). Note that this license only applies to code in our library, the dependencies and submodules of which ([Depth-Anything-3](https://github.com/ByteDance-Seed/depth-anything-3), [Florence-2](https://github.com/anyantudre/Florence-2-Vision-Language-Model)) are separate and individually licensed.
+This project is licensed under the [Apache-2.0 License](https://github.com/inspatio/inspatio-world/blob/main/LICENSE). Note that this license only applies to code in our library, the dependencies and submodules of which ([Depth-Anything-3](https://github.com/ByteDance-Seed/depth-anything-3), [Florence-2](https://github.com/anyantudre/Florence-2-Vision-Language-Model)) are separate and individually licensed.
 
 ---
 
