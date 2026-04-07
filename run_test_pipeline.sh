@@ -198,21 +198,9 @@ if [ "$SKIP_STEP1" = false ]; then
         fi
 
         # Merge partial JSONs into final new.json
-        python -c "
-import json, glob, os
-partials = []
-for pf in sorted(glob.glob('${INPUT_DIR}/new_partial_*.json')):
-    with open(pf) as f:
-        partials.extend(json.load(f))
-# Sort by video_path to ensure deterministic order
-partials.sort(key=lambda x: x['video_path'])
-with open('${JSON_PATH}', 'w') as f:
-    json.dump(partials, f, indent=4, ensure_ascii=False)
-# Clean up partial files
-for pf in glob.glob('${INPUT_DIR}/new_partial_*.json'):
-    os.remove(pf)
-print(f'Merged {len(partials)} entries into ${JSON_PATH}')
-"
+        python "$SCRIPT_DIR/scripts/merge_partial_jsons.py" \
+            --input_dir "$INPUT_DIR" \
+            --output_json "$JSON_PATH"
     fi
 
     echo "Step 1 completed. JSON saved to: $JSON_PATH"
@@ -241,79 +229,12 @@ if [ "$SKIP_STEP2" = false ]; then
     echo "========== Step 2a: DA3 depth + convert (multi-GPU parallel) =========="
     echo "  Using ${NUM_GPUS} GPU(s): ${STEP2_GPUS}"
 
-    python -c "
-import json, subprocess, os, sys, multiprocessing
-
-gpu_list = '${STEP2_GPUS}'.split(',')
-num_gpus = len(gpu_list)
-
-with open('${JSON_PATH}') as f:
-    data = json.load(f)
-
-total_videos = len(data)
-print(f'Total videos: {total_videos}, GPUs: {num_gpus}')
-
-def process_video(args):
-    idx, entry, gpu_id = args
-    video_path = entry['video_path']
-    final_output = entry['vggt_depth_path']
-    da3_output = final_output + '_da3_tmp'
-    video_name = os.path.basename(video_path)
-
-    print(f'[GPU {gpu_id}] [{idx+1}/{total_videos}] Processing: {video_name}')
-
-    env = os.environ.copy()
-    env['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
-
-    # --- DA3 depth estimation ---
-    if os.path.isdir(da3_output) and os.path.isdir(os.path.join(da3_output, 'frames_pcd')):
-        print(f'[GPU {gpu_id}] [{idx+1}/{total_videos}] DA3 output exists, skipping')
-    else:
-        cmd_da3 = [
-            sys.executable, '${DA3_CLI}',
-            '--input', video_path,
-            '--output', da3_output,
-            '--config-json', '${DA3_CONFIG}',
-        ]
-        result = subprocess.run(cmd_da3, env=env)
-        if result.returncode != 0:
-            print(f'[GPU {gpu_id}] DA3 failed for {video_name}', file=sys.stderr)
-            return False
-
-    # --- Convert DA3 -> Pi3 format ---
-    cmd_convert = [
-        sys.executable, '${CONVERT_SCRIPT}',
-        '--da3_dir', da3_output,
-        '--output_dir', final_output,
-        '--video_path', video_path,
-    ]
-    result = subprocess.run(cmd_convert, env=env)
-    if result.returncode != 0:
-        print(f'[GPU {gpu_id}] Convert failed for {video_name}', file=sys.stderr)
-        return False
-
-    print(f'[GPU {gpu_id}] [{idx+1}/{total_videos}] Done: {video_name}')
-    return True
-
-# Assign videos to GPUs round-robin
-tasks = []
-for i, entry in enumerate(data):
-    gpu_id = gpu_list[i % num_gpus]
-    tasks.append((i, entry, gpu_id))
-
-if num_gpus == 1:
-    results = [process_video(t) for t in tasks]
-else:
-    with multiprocessing.Pool(processes=num_gpus) as pool:
-        results = pool.map(process_video, tasks)
-
-failed = sum(1 for r in results if not r)
-if failed > 0:
-    print(f'{failed}/{total_videos} videos failed', file=sys.stderr)
-    sys.exit(1)
-
-print(f'All {total_videos} videos processed successfully.')
-"
+    python "$SCRIPT_DIR/scripts/run_da3_parallel.py" \
+        --json_path "$JSON_PATH" \
+        --gpu_list "$STEP2_GPUS" \
+        --da3_cli "$DA3_CLI" \
+        --da3_config "$DA3_CONFIG" \
+        --convert_script "$CONVERT_SCRIPT"
 
     echo "Step 2a completed. Depth maps generated."
 else
@@ -330,66 +251,12 @@ echo ""
 echo "========== Step 2b: Rendering point clouds (multi-GPU parallel) =========="
 echo "  Using ${NUM_GPUS} GPU(s): ${STEP2_GPUS}"
 
-python -c "
-import json, subprocess, os, sys, multiprocessing
-
-gpu_list = '${STEP2_GPUS}'.split(',')
-num_gpus = len(gpu_list)
-
-with open('${JSON_PATH}') as f:
-    data = json.load(f)
-
-total_videos = len(data)
-print(f'Total videos: {total_videos}, GPUs: {num_gpus}')
-
-def render_video(args):
-    idx, entry, gpu_id = args
-    video_path = entry['video_path']
-    final_output = entry['vggt_depth_path']
-    da3_output = final_output + '_da3_tmp'
-    render_output = os.path.join(final_output, 'render')
-    video_name = os.path.basename(video_path)
-
-    print(f'[GPU {gpu_id}] [{idx+1}/{total_videos}] Rendering: {video_name}')
-
-    env = os.environ.copy()
-    env['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
-
-    cmd_render = [
-        sys.executable, '${RENDER_SCRIPT}',
-        '--da3_dir', da3_output,
-        '--traj_txt_path', '${TRAJ_TXT_PATH}',
-        '--output_dir', render_output,
-        '--width', '832',
-        '--height', '480',
-    ]
-    result = subprocess.run(cmd_render, env=env)
-    if result.returncode != 0:
-        print(f'[GPU {gpu_id}] Render failed for {video_name}', file=sys.stderr)
-        return False
-
-    print(f'[GPU {gpu_id}] [{idx+1}/{total_videos}] Done: {video_name}')
-    return True
-
-# Assign videos to GPUs round-robin
-tasks = []
-for i, entry in enumerate(data):
-    gpu_id = gpu_list[i % num_gpus]
-    tasks.append((i, entry, gpu_id))
-
-if num_gpus == 1:
-    results = [render_video(t) for t in tasks]
-else:
-    with multiprocessing.Pool(processes=num_gpus) as pool:
-        results = pool.map(render_video, tasks)
-
-failed = sum(1 for r in results if not r)
-if failed > 0:
-    print(f'{failed}/{total_videos} videos failed', file=sys.stderr)
-    sys.exit(1)
-
-print(f'All {total_videos} renders completed.')
-"
+python "$SCRIPT_DIR/scripts/run_render_parallel.py" \
+    --json_path "$JSON_PATH" \
+    --gpu_list "$STEP2_GPUS" \
+    --render_script "$RENDER_SCRIPT" \
+    --traj_txt_path "$TRAJ_TXT_PATH" \
+    --width 832 --height 480
 
 echo "Step 2b completed. Point clouds rendered."
 

@@ -1,0 +1,16 @@
+[
+    {
+        "video_path": "./test/example3/coffee_martini.mp4",
+        "vggt_depth_path": "./test/example3/new_vggt/coffee_martini",
+        "vggt_extrinsics_path": "./test/example3/new_vggt/coffee_martini/extrinsics.txt",
+        "radius_ratio": 1,
+        "text": "The image shows a bartender in a kitchen preparing a drink. He is wearing a black apron and a blue cap, and is standing behind a white countertop with various bottles of alcohol on it. The bartender is pouring a drink into a martini glass with a metal shaker. There are several other bottles of different types of alcohol scattered around the countertop, including bottles of liquor, a coffee maker, and a pitcher. In the background, there is a window with white blinds and a bookshelf with books and other decorative items. The kitchen appears to be well-lit with natural light coming in from the windows."
+    },
+    {
+        "video_path": "./test/example3/cropped_source.mp4",
+        "vggt_depth_path": "./test/example3/new_vggt/cropped_source",
+        "vggt_extrinsics_path": "./test/example3/new_vggt/cropped_source/extrinsics.txt",
+        "radius_ratio": 1,
+        "text": "The image shows a white table with a small white cup and saucer on it. The cup is filled with a dark liquid, possibly coffee or tea, and is being poured into it. On the right side of the table, there is a small piece of paper with some food items on it, including some cookies. The table is covered in crumbs and there are a few scattered pieces of food around the cup. The background is dark, and the focus is on the cup and the food items. The overall mood of the image is dark and moody."
+    }
+]
