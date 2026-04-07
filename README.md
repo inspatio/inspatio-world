@@ -35,25 +35,7 @@ Download the following model checkpoints into the `checkpoints/` directory:
 | **Florence-2-large** | Video captioning (Step 1) | [HuggingFace](https://huggingface.co/microsoft/Florence-2-large) |
 
 ```bash
-# Download InSpatio-World checkpoint (14B)
-mkdir -p checkpoints/InSpatio-World
-wget -O checkpoints/InSpatio-World/InSpatio-World.safetensors \
-  "https://huggingface.co/inspatio/world/resolve/main/InSpatio-World.safetensors"
-
-# Download InSpatio-World checkpoint (1.3B)
-mkdir -p checkpoints/InSpatio-World-1.3B
-wget -O checkpoints/InSpatio-World-1.3B/InSpatio-World-1.3B.safetensors \
-  "https://huggingface.co/inspatio/world/resolve/main/InSpatio-World-1.3B.safetensors"
-
-# Download Wan models
-huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir checkpoints/Wan2.1-T2V-1.3B
-huggingface-cli download Wan-AI/Wan2.1-I2V-14B-480P --local-dir checkpoints/Wan2.1-I2V-14B-480P
-
-# Download DA3
-huggingface-cli download depth-anything/Depth-Anything-3-DA3 --local-dir checkpoints/DA3
-
-# Download Florence-2
-huggingface-cli download microsoft/Florence-2-large --local-dir checkpoints/Florence-2-large
+bash scripts/download.sh
 ```
 
 Expected directory structure after downloading:
