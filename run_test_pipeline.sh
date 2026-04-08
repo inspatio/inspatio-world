@@ -33,6 +33,9 @@ set -e
 #   --relative_to_source  (optional) Compose trajectory poses relative to initial view
 #   --rotation_only       (optional) Only apply rotation, ignore translation (tripod pan/tilt)
 #   --disable_adaptive_frame (optional) Disable adaptive frame expansion/subsampling
+#   --use_tae             (optional) Use Tiny Auto Encoder (TAE) instead of WanVAE
+#   --tae_checkpoint_path (optional) Path to TAE checkpoint file (required when --use_tae is set)
+#   --compile_dit         (optional) Apply torch.compile to the DiT model
 #   --freeze_repeat       (optional) Repeat a frame N times for time-freeze effect (default: 0, disabled)
 #   --freeze_frame        (optional) Frame index to freeze (default: middle frame)
 ##############################################################################
@@ -58,6 +61,9 @@ ADAPTIVE_FRAME=true
 MASTER_PORT=29513
 FREEZE_REPEAT=0
 FREEZE_FRAME=""
+USE_TAE=false
+TAE_CHECKPOINT_PATH="${SCRIPT_DIR}/checkpoints/taehv/taew2_1.pth"
+COMPILE_DIT=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -142,6 +148,18 @@ while [[ $# -gt 0 ]]; do
             FREEZE_FRAME="$2"
             shift 2
             ;;
+        --use_tae)
+            USE_TAE=true
+            shift
+            ;;
+        --tae_checkpoint_path)
+            TAE_CHECKPOINT_PATH="$2"
+            shift 2
+            ;;
+        --compile_dit)
+            COMPILE_DIT=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -184,6 +202,9 @@ echo "  Rotation only:   $ROTATION_ONLY"
 echo "  Adaptive frame:  $ADAPTIVE_FRAME"
 echo "  Freeze repeat:   $FREEZE_REPEAT"
 echo "  Freeze frame:    ${FREEZE_FRAME:-auto (middle)}"
+echo "  Use TAE:         $USE_TAE"
+echo "  TAE checkpoint:  ${TAE_CHECKPOINT_PATH:-N/A}"
+echo "  Compile DiT:     $COMPILE_DIT"
 echo "============================================"
 
 ##############################################################################
@@ -348,7 +369,10 @@ if [ "$SKIP_STEP3" = false ]; then
         --config_path "$TMP_CONFIG" \
         --json_path "$JSON_PATH" \
         --checkpoint_path "$CHECKPOINT_PATH" \
-        --output_folder "$OUTPUT_FOLDER"
+        --output_folder "$OUTPUT_FOLDER" \
+        $([ "$USE_TAE" = true ] && echo "--use_tae") \
+        $([ -n "$TAE_CHECKPOINT_PATH" ] && echo "--tae_checkpoint_path $TAE_CHECKPOINT_PATH") \
+        $([ "$COMPILE_DIT" = true ] && echo "--compile_dit")
 
     rm -f "$TMP_CONFIG"
 

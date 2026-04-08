@@ -125,21 +125,24 @@ class CausalInferencePipeline(torch.nn.Module):
     def inference(
         self,
         noise: torch.Tensor,
-        text_prompts: List[str],    
+        text_prompts: List[str],
         ref_latent: Optional[torch.Tensor] = None,
         render_latent: Optional[torch.Tensor] = None,
         mask_latent: Optional[torch.Tensor] = None,
+        decode: bool = True,
     ) -> torch.Tensor:
         """
         Perform inference on the given noise and text prompts.
         Inputs:
             noise (torch.Tensor): The input noise tensor of shape
                 (batch_size, num_output_frames, num_channels, height, width).
-            text_prompts (List[str]): The list of text prompts. 
+            text_prompts (List[str]): The list of text prompts.
+            decode (bool): If True (default), decode latents to pixel space via VAE.
+                If False, return denoised latents directly (e.g. for external TAE decoder).
         Outputs:
             video (torch.Tensor): The generated video tensor of shape
                 (batch_size, num_output_frames, num_channels, height, width).
-                It is normalized to be in the range [0, 1].
+                When decode=True, normalized to [0, 1]. When decode=False, raw latents.
         """
         batch_size, num_frames, num_channels, height, width = noise.shape
         assert num_frames % self.num_frame_per_block == 0, f"num_frames {num_frames} is not a multiple of num_frame_per_block {self.num_frame_per_block}"
@@ -220,6 +223,9 @@ class CausalInferencePipeline(torch.nn.Module):
  
 
         # Step 4: Decode the output
+        if not decode:
+            return output
+
         video = self.vae.decode_to_pixel(output, use_cache=False)
         video = (video * 0.5 + 0.5).clamp(0, 1)
 

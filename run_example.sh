@@ -25,6 +25,15 @@ bash run_test_pipeline.sh \
   --disable_adaptive_frame 
 
 bash run_test_pipeline.sh \
+  --input_dir ./test/example \
+  --traj_txt_path ./traj/x_y_circle_cycle.txt \
+  --skip_step1 --skip_step2 \
+  --use_tae --compile_dit \
+  --config_path ./configs/inference_1.3b.yaml  \
+  --checkpoint_path ./checkpoints/InSpatio-World-1.3B/InSpatio-World-1.3B.safetensors \
+  --disable_adaptive_frame 
+
+bash run_test_pipeline.sh \
   --input_dir ./test/example2 \
   --traj_txt_path ./traj/x_y_circle_cycle.txt 
 

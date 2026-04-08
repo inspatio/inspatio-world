@@ -34,6 +34,7 @@ Download the following model checkpoints into the `checkpoints/` directory:
 | **Wan2.1-I2V-14B-480P** | Base diffusion model for 14B (Step 3) | [HuggingFace](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P) |
 | **DA3 (Depth-Anything-3)** | Depth estimation (Step 2) | [HuggingFace](https://huggingface.co/depth-anything/DA3NESTED-GIANT-LARGE) |
 | **Florence-2-large** | Video captioning (Step 1) | [HuggingFace](https://huggingface.co/microsoft/Florence-2-large) |
+| **TAEHV** | Speed up (Optional) | [Github](https://github.com/madebyollin/taehv.git) |
 
 ```bash
 bash scripts/download.sh
@@ -49,7 +50,8 @@ checkpoints/
 ├── Wan2.1-T2V-1.3B/
 ├── Wan2.1-I2V-14B-480P/
 ├── DA3/
-└── Florence-2-large/
+├── Florence-2-large/
+└── taehv/
 ```
 
 ## Inference
@@ -138,6 +140,10 @@ A trajectory file is a plain text file with **3 lines**, each containing space-s
 | `--disable_adaptive_frame` | No | false | Disable adaptive frame expansion/subsampling (use original frame count as-is) |
 | `--freeze_repeat` | No | `0` | Repeat a specific frame N extra times to create a time-freeze (pause) effect |
 | `--freeze_frame` | No | middle frame | Frame index to freeze; defaults to the middle frame if not specified |
+| `--use_tae` | No |	false |	Use Tiny Auto Encoder (TAE) instead of WanVAE |
+| `--tae_checkpoint_path` |	No | `./checkpoints/taehv/taew2_1.pth`	| Path to TAE checkpoint file (required when --use_tae is set) |
+| `--compile_dit` |	No	| false |	Apply torch.compile to the DiT model |
+
 
 ### Skip Already-Completed Steps
 
@@ -150,47 +156,49 @@ bash run_test_pipeline.sh \
   --skip_step1 --skip_step2
 ```
 
-## Repository Structure
+### Generate Temporal Control Videos
 
+```bash
+bash run_test_pipeline.sh \
+  --input_dir ./test/example \
+  --traj_txt_path ./traj/x_y_circle_cycle.txt \
+  --freeze_repeat 150 \
+  --output_folder ./output/example_freeze_repeat_150 \
+  --disable_adaptive_frame
 ```
-├── configs/
-│   ├── inference.yaml            # Inference config for 14B model
-│   ├── inference_1.3b.yaml       # Inference config for 1.3B model
-│   └── default_config.yaml       # Default config values
-├── datasets/
-│   ├── video_dataset.py          # Video dataset loader (reads JSON metadata)
-│   ├── test_dataset.py            # Test dataset with adaptive frame count
-│   └── utils.py                  # Crop/resize and trajectory generation utilities
-├── depth/
-│   ├── depth_predict_da3.py      # DA3 depth estimation core
-│   ├── depth_predict_da3_cli.py  # DA3 CLI entry point
-│   └── depth_utils.py            # PLY writing, ground plane alignment, pose smoothing
-├── pipeline/
-│   └── causal_inference.py       # STAR + Joint DMD inference pipeline
-├── utils/
-│   ├── wan_wrapper.py            # WanTextEncoder, WanVAEWrapper, WanDiffusionWrapper
-│   ├── render_warper.py          # Depth-based mask conversion for latent space
-│   └── misc.py                   # Seed setting and misc utilities
-├── wan/                          # Wan model architecture (causal attention, KV cache)
-├── traj/                         # Camera trajectory files (see Trajectory Control)
-├── scripts/
-│   ├── gen_json.py               # Step 1: Florence-2 video captioning
-│   ├── convert_da3_to_pi3.py     # Step 2: DA3 → inference format conversion
-│   └── render_point_cloud.py     # Step 2: Offline point cloud rendering
-├── inference_causal_test.py      # Step 3: v2v inference entry point
-├── run_test_pipeline.sh          # End-to-end inference pipeline script
-└── requirements.txt
+
+You can control the time-stop behavior using two specific parameters: use `--freeze_frame` to choose which frame to freeze (default middle frame), and `--freeze_repeat` to determine the duration (number of frames) of the pause.
+
+### Autonomous Driving Applications
+
+```bash
+bash run_test_pipeline.sh \
+  --input_dir ./test/example3 \
+  --traj_txt_path ./traj/x_y_circle_cycle.txt \
+  --relative_to_source \
+  --rotation_only \
+  --disable_adaptive_frame
 ```
+
+### Speed Up
+
+```bash
+bash run_test_pipeline.sh \
+  --input_dir ./test/example \
+  --traj_txt_path ./traj/x_y_circle_cycle.txt \
+  --use_tae \
+  --config_path ./configs/inference_1.3b.yaml  \
+  --checkpoint_path ./checkpoints/InSpatio-World-1.3B/InSpatio-World-1.3B.safetensors \
+  --disable_adaptive_frame 
+```
+
+You can switch from VAE to TAE to accelerate the process. Furthermore, you can use `--compile_dit` to further boost the speed, reaching 24 fps on the 1.3B model. However, please note that this operation requires a relatively long warm-up time when triggered for the first time. It is suitable for scenarios where you need to deploy as a service and pursue extreme speed.
 
 ## License
 
-This project is licensed under the [Apache-2.0 License](https://github.com/inspatio/inspatio-world/blob/main/LICENSE). Note that this license only applies to code in our library, the dependencies and submodules of which ([Depth-Anything-3](https://github.com/ByteDance-Seed/depth-anything-3), [Florence-2](https://github.com/anyantudre/Florence-2-Vision-Language-Model)) are separate and individually licensed.
+This project is licensed under the [Apache-2.0 License](https://github.com/inspatio/inspatio-world/blob/main/LICENSE). Note that this license only applies to code in our library, the dependencies and submodules of which ([Depth-Anything-3](https://github.com/ByteDance-Seed/depth-anything-3), [Florence-2](https://github.com/anyantudre/Florence-2-Vision-Language-Model), [TAEHV](https://github.com/madebyollin/taehv.git)) are separate and individually licensed.
 
 ---
-
-**Note:**
-- The current release of InSpatio‑World is a version that has not yet been specifically optimized for speed.  The fully optimized version, consistent with our online live demo and reaching ~24 FPS on a datacenter GPU and 10 FPS on an RTX 4090, will be released together with our technical report within 2 weeks.
-
 
 ## Citation
 
@@ -206,5 +214,4 @@ If you use InSpatio-World in your research, please use the following BibTeX entr
 ```
 
 ## Acknowledgement
-
-InSpatio-World is built upon [Self-Forcing](https://github.com/guandeh17/Self-Forcing) and [Wan2.1](https://github.com/Wan-Video/Wan2.1). We sincerely thank the Self-Forcing and Wan team for their foundational work and open-source contribution. We also gratefully acknowledge [Depth-Anything-3](https://github.com/ByteDance-Seed/depth-anything-3), [Florence-2](https://github.com/anyantudre/Florence-2-Vision-Language-Model) and [ReCamMaster](https://github.com/KlingAIResearch/ReCamMaster) for their excellent work that inspired and supported this project.
+InSpatio-World utilizes a backbone based on [Wan2.1](https://github.com/Wan-Video/Wan2.1), with its training code referencing [Self-Forcing](https://github.com/guandeh17/Self-Forcing). Additionally, the TAE component for inference speed-up is built upon [TAEV](https://github.com/madebyollin/taehv.git). We sincerely thank the Self-Forcing, Wan and TAEV team for their foundational work and open-source contribution. We also gratefully acknowledge [Depth-Anything-3](https://github.com/ByteDance-Seed/depth-anything-3), [Florence-2](https://github.com/anyantudre/Florence-2-Vision-Language-Model) and [ReCamMaster](https://github.com/KlingAIResearch/ReCamMaster) for their excellent work that inspired and supported this project.

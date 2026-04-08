@@ -385,13 +385,13 @@ class WanDiffusionWrapper(torch.nn.Module):
 
         # X0 prediction
         # Handle None inputs for T2V mode
-        image_latent_permuted = image_latent_input.permute(0, 2, 1, 3, 4) if image_latent_input is not None else None
-        render_latent_permuted = render_latent_input.permute(0, 2, 1, 3, 4) if render_latent_input is not None else None
+        image_latent_permuted = image_latent_input.permute(0, 2, 1, 3, 4).contiguous() if image_latent_input is not None else None
+        render_latent_permuted = render_latent_input.permute(0, 2, 1, 3, 4).contiguous() if render_latent_input is not None else None
 
         if kv_cache is not None:
             assert(not self.dual_model), "KV cache is not supported for dual-model mode"
             flow_pred = self.model(
-                noisy_image_or_video.permute(0, 2, 1, 3, 4),
+                noisy_image_or_video.permute(0, 2, 1, 3, 4).contiguous(),
                 t=input_timestep, context=prompt_embeds,
                 seq_len=self.seq_len,
                 kv_cache=kv_cache,
