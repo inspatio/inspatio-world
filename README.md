@@ -207,7 +207,7 @@ If you use InSpatio-World in your research, please use the following BibTeX entr
 ```bibtex
 @misc{inspatio-world,
     title={InSpatio-World},
-    author={InSpatio-World Contributors},
+    author={InSpatio Team},
     howpublished={\url{https://github.com/inspatio/inspatio-world}},
     year={2026}
 }
