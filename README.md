@@ -192,7 +192,7 @@ bash run_test_pipeline.sh \
   --disable_adaptive_frame 
 ```
 
-You can switch from VAE to TAE to accelerate the process. Furthermore, you can use `--compile_dit` to further boost the speed, reaching 24 fps on the 1.3B model. However, please note that this operation requires a relatively long warm-up time when triggered for the first time. It is suitable for scenarios where you need to deploy as a service and pursue extreme speed.
+You can switch from VAE to TAE to accelerate the process. Furthermore, you can use `--compile_dit` to further boost the speed, reaching 24 fps on an H-series NVIDIA GPU（1.3B). However, please note that this operation requires a relatively long warm-up time when triggered for the first time. It is suitable for scenarios where you need to deploy as a service and pursue extreme speed.
 
 ## License
 
