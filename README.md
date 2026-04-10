@@ -5,6 +5,7 @@
 [![Discord](https://img.shields.io/badge/Discord-Join-7289da?logo=discord&logoColor=white)](https://discord.gg/SyyjR3Z57w)
 [![Project Page](https://img.shields.io/badge/Project-Page-green)](https://inspatio.github.io/inspatio-world/)
 [![License](https://img.shields.io/badge/License-Apache--2.0-orange)](https://github.com/inspatio/inspatio-world/blob/main/LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2604.07209-b31b1b)](https://arxiv.org/abs/2604.07209)
 
 ## Requirements
 
@@ -206,9 +207,9 @@ If you use InSpatio-World in your research, please use the following BibTeX entr
 
 ```bibtex
 @misc{inspatio-world,
-    title={InSpatio-World},
+    title={INSPATIO-WORLD: A Real-Time 4D World Simulator via Spatiotemporal Autoregressive Modeling},
     author={InSpatio Team},
-    howpublished={\url{https://github.com/inspatio/inspatio-world}},
+    journal={arXiv preprint arXiv: 2604.07209},
     year={2026}
 }
 ```
