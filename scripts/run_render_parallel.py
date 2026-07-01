@@ -19,7 +19,7 @@ import sys
 
 
 def render_video(args):
-    idx, entry, gpu_id, total_videos, render_script, traj_txt_path, width, height, relative_to_source, rotation_only, freeze_repeat, freeze_frame = args
+    idx, entry, gpu_id, total_videos, render_script, traj_txt_path, width, height, render_backend, relative_to_source, rotation_only, freeze_repeat, freeze_frame = args
     video_path = entry["video_path"]
     final_output = entry["vggt_depth_path"]
     da3_output = final_output + "_da3_tmp"
@@ -38,6 +38,7 @@ def render_video(args):
         "--output_dir", render_output,
         "--width", str(width),
         "--height", str(height),
+        "--render_backend", render_backend,
     ]
     if relative_to_source:
         cmd_render.append("--relative_to_source")
@@ -64,6 +65,8 @@ def main():
     parser.add_argument("--traj_txt_path", required=True, help="Trajectory file path")
     parser.add_argument("--width", type=int, default=832, help="Render width")
     parser.add_argument("--height", type=int, default=480, help="Render height")
+    parser.add_argument("--render_backend", choices=["warper", "ply"], default="warper",
+                        help="Rendering backend passed through to render_point_cloud.py")
     parser.add_argument("--relative_to_source", action="store_true",
                         help="Compose trajectory poses relative to initial view")
     parser.add_argument("--rotation_only", action="store_true",
@@ -87,7 +90,7 @@ def main():
     tasks = []
     for i, entry in enumerate(data):
         gpu_id = gpu_ids[i % num_gpus]
-        tasks.append((i, entry, gpu_id, total_videos, args.render_script, args.traj_txt_path, args.width, args.height, args.relative_to_source, args.rotation_only, args.freeze_repeat, args.freeze_frame))
+        tasks.append((i, entry, gpu_id, total_videos, args.render_script, args.traj_txt_path, args.width, args.height, args.render_backend, args.relative_to_source, args.rotation_only, args.freeze_repeat, args.freeze_frame))
 
     if num_gpus == 1:
         results = [render_video(t) for t in tasks]

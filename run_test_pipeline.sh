@@ -38,6 +38,7 @@ set -e
 #   --compile_dit         (optional) Apply torch.compile to the DiT model
 #   --freeze_repeat       (optional) Repeat a frame N times for time-freeze effect (default: 0, disabled)
 #   --freeze_frame        (optional) Frame index to freeze (default: middle frame)
+#   --render_backend      (optional) Rendering backend: warper (default, no point-cloud save) or ply
 ##############################################################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -64,6 +65,7 @@ FREEZE_FRAME=""
 USE_TAE=false
 TAE_CHECKPOINT_PATH="${SCRIPT_DIR}/checkpoints/taehv/taew2_1.pth"
 COMPILE_DIT=false
+RENDER_BACKEND="warper"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -160,6 +162,10 @@ while [[ $# -gt 0 ]]; do
             COMPILE_DIT=true
             shift
             ;;
+        --render_backend)
+            RENDER_BACKEND="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -175,6 +181,15 @@ fi
 if [ -z "$TRAJ_TXT_PATH" ]; then
     echo "Error: --traj_txt_path is required"
     exit 1
+fi
+if [ "$RENDER_BACKEND" != "warper" ] && [ "$RENDER_BACKEND" != "ply" ]; then
+    echo "Error: --render_backend must be 'warper' or 'ply'"
+    exit 1
+fi
+if [ "$RENDER_BACKEND" = "ply" ]; then
+    SAVE_POINT_CLOUD=true
+else
+    SAVE_POINT_CLOUD=false
 fi
 
 INPUT_DIR_NAME=$(basename "$INPUT_DIR")
@@ -202,6 +217,8 @@ echo "  Rotation only:   $ROTATION_ONLY"
 echo "  Adaptive frame:  $ADAPTIVE_FRAME"
 echo "  Freeze repeat:   $FREEZE_REPEAT"
 echo "  Freeze frame:    ${FREEZE_FRAME:-auto (middle)}"
+echo "  Render backend:  $RENDER_BACKEND"
+echo "  Save point cloud:$SAVE_POINT_CLOUD"
 echo "  Use TAE:         $USE_TAE"
 echo "  TAE checkpoint:  ${TAE_CHECKPOINT_PATH:-N/A}"
 echo "  Compile DiT:     $COMPILE_DIT"
@@ -269,7 +286,7 @@ fi
 # Step 2: Generate depth with DA3 + convert + render point clouds
 ##############################################################################
 DA3_CLI="${SCRIPT_DIR}/depth/depth_predict_da3_cli.py"
-DA3_CONFIG="{\"model_path\":\"${DA3_MODEL_PATH}\",\"fix_resize\":true,\"fix_resize_height\":480,\"fix_resize_width\":832,\"num_frames\":1000,\"save_point_cloud\":true}"
+DA3_CONFIG="{\"model_path\":\"${DA3_MODEL_PATH}\",\"fix_resize\":true,\"fix_resize_height\":480,\"fix_resize_width\":832,\"num_frames\":1000,\"save_point_cloud\":${SAVE_POINT_CLOUD}}"
 CONVERT_SCRIPT="${SCRIPT_DIR}/scripts/convert_da3_to_pi3.py"
 RENDER_SCRIPT="${SCRIPT_DIR}/scripts/render_point_cloud.py"
 
@@ -313,6 +330,7 @@ python "$SCRIPT_DIR/scripts/run_render_parallel.py" \
     --render_script "$RENDER_SCRIPT" \
     --traj_txt_path "$TRAJ_TXT_PATH" \
     --width 832 --height 480 \
+    --render_backend "$RENDER_BACKEND" \
     $([ "$RELATIVE_TO_SOURCE" = true ] && echo "--relative_to_source") \
     $([ "$ROTATION_ONLY" = true ] && echo "--rotation_only") \
     $([ "$FREEZE_REPEAT" -gt 0 ] 2>/dev/null && echo "--freeze_repeat $FREEZE_REPEAT") \

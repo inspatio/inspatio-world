@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import glob
 import json
 import multiprocessing
 import os
@@ -18,8 +19,34 @@ import subprocess
 import sys
 
 
+def da3_output_complete(da3_output, require_point_cloud):
+    """Return whether existing DA3 output has the files required downstream."""
+    if not os.path.isdir(da3_output):
+        return False, "missing DA3 output directory"
+
+    intrinsic_path = os.path.join(da3_output, "intrinsic.txt")
+    extrinsic_path = os.path.join(da3_output, "extrinsic.txt")
+    if not os.path.isfile(intrinsic_path) or not os.path.isfile(extrinsic_path):
+        return False, "missing intrinsic.txt or extrinsic.txt"
+
+    frame_files = sorted(
+        glob.glob(os.path.join(da3_output, "frames", "*.jpg"))
+        + glob.glob(os.path.join(da3_output, "frames", "*.png"))
+    )
+    depth_files = sorted(glob.glob(os.path.join(da3_output, "depth", "*.png")))
+    if not frame_files or not depth_files:
+        return False, "missing RGB frames or depth maps"
+
+    if require_point_cloud:
+        ply_files = sorted(glob.glob(os.path.join(da3_output, "frames_pcd", "*.ply")))
+        if len(ply_files) != len(depth_files):
+            return False, f"point clouds incomplete ({len(ply_files)}/{len(depth_files)})"
+
+    return True, "complete"
+
+
 def process_video(args):
-    idx, entry, gpu_id, total_videos, da3_cli, da3_config, convert_script = args
+    idx, entry, gpu_id, total_videos, da3_cli, da3_config, convert_script, require_point_cloud = args
     video_path = entry["video_path"]
     final_output = entry["vggt_depth_path"]
     da3_output = final_output + "_da3_tmp"
@@ -31,9 +58,11 @@ def process_video(args):
     env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
     # --- DA3 depth estimation ---
-    if os.path.isdir(da3_output) and os.path.isdir(os.path.join(da3_output, "frames_pcd")):
-        print(f"[GPU {gpu_id}] [{idx+1}/{total_videos}] DA3 output exists, skipping")
+    complete, reason = da3_output_complete(da3_output, require_point_cloud)
+    if complete:
+        print(f"[GPU {gpu_id}] [{idx+1}/{total_videos}] DA3 output exists ({reason}), skipping")
     else:
+        print(f"[GPU {gpu_id}] [{idx+1}/{total_videos}] DA3 output incomplete: {reason}; running DA3")
         cmd_da3 = [
             sys.executable, da3_cli,
             "--input", video_path,
@@ -75,15 +104,18 @@ def main():
 
     with open(args.json_path) as f:
         data = json.load(f)
+    da3_config = json.loads(args.da3_config)
+    require_point_cloud = bool(da3_config.get("save_point_cloud", False))
 
     total_videos = len(data)
     print(f"Total videos: {total_videos}, GPUs: {num_gpus}")
+    print(f"Require point clouds: {require_point_cloud}")
 
     # Assign videos to GPUs round-robin
     tasks = []
     for i, entry in enumerate(data):
         gpu_id = gpu_ids[i % num_gpus]
-        tasks.append((i, entry, gpu_id, total_videos, args.da3_cli, args.da3_config, args.convert_script))
+        tasks.append((i, entry, gpu_id, total_videos, args.da3_cli, args.da3_config, args.convert_script, require_point_cloud))
 
     if num_gpus == 1:
         results = [process_video(t) for t in tasks]

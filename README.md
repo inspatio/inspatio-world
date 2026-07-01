@@ -5,6 +5,7 @@
 [![Project Page](https://img.shields.io/badge/Project-Page-green)](https://inspatio.github.io/inspatio-world/)
 [![License](https://img.shields.io/badge/License-Apache--2.0-orange)](https://github.com/inspatio/inspatio-world/blob/main/LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2604.07209-b31b1b)](https://arxiv.org/abs/2604.07209)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-blue?logo=googlechrome&logoColor=white)](https://world.inspatio.com/)
 
 [![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/SyyjR3Z57w)
 
@@ -126,6 +127,7 @@ A trajectory file is a plain text file with **3 lines**, each containing space-s
 | `--skip_step3` | No | false | Skip v2v inference |
 | `--relative_to_source` | No | false | Compose trajectory poses relative to initial view |
 | `--rotation_only` | No | false | Only apply rotation from trajectory, ignore translation (tripod pan/tilt) |
+| `--render_backend` | No | `warper` | Rendering backend: `warper` uses fast depth-image warping and skips point-cloud saving; `ply` uses the original point-cloud renderer |
 | `--disable_adaptive_frame` | No | false | Disable adaptive frame expansion/subsampling (use original frame count as-is) |
 | `--freeze_repeat` | No | `0` | Repeat a specific frame N extra times to create a time-freeze (pause) effect |
 | `--freeze_frame` | No | middle frame | Frame index to freeze; defaults to the middle frame if not specified |
