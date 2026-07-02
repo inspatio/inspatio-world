@@ -1,15 +1,15 @@
 # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
+import os
 import torch
 try:
     import flash_attn_interface
-    from flash_attn import flash_attn_func
 
     def is_hopper_gpu():
         if not torch.cuda.is_available():
             return False
-        device_name = torch.cuda.get_device_name(0).lower()
-        return "h100" in device_name or "hopper" in device_name
-    FLASH_ATTN_3_AVAILABLE = is_hopper_gpu()
+        major, _ = torch.cuda.get_device_capability(0)
+        return major >= 9  # Hopper (H100/H200) is SM 9.0+
+    FLASH_ATTN_3_AVAILABLE = is_hopper_gpu() and os.environ.get("WAN_DISABLE_FA3", "0") != "1"
 except ModuleNotFoundError:
     FLASH_ATTN_3_AVAILABLE = False
 
@@ -22,6 +22,8 @@ except ModuleNotFoundError:
 from .sage import sageattn_func, SAGEATTN_AVAILABLE
 
 import warnings
+
+_ATTN_BACKEND_PRINTED = set()
 
 __all__ = [
     'flash_attention',
@@ -36,6 +38,12 @@ if FLASH_ATTN_3_AVAILABLE:
     print("flash attn 3 available", FLASH_ATTN_3_AVAILABLE)
 if SAGEATTN_AVAILABLE:
     print("sage attn available", SAGEATTN_AVAILABLE)
+
+
+def _print_attn_backend(name):
+    if name not in _ATTN_BACKEND_PRINTED:
+        print(f"[ATTN_BACKEND] {name}")
+        _ATTN_BACKEND_PRINTED.add(name)
 
 
 def flash_attention(
@@ -66,12 +74,6 @@ def flash_attention(
     deterministic:  bool. If True, slightly slower and uses more memory.
     dtype:          torch.dtype. Apply when dtype of q/k/v is not float16/bfloat16.
     """
-    if FLASH_ATTN_3_AVAILABLE:
-        return flash_attn_func(
-            q,
-            k,
-            v,
-        )
     half_dtypes = (torch.float16, torch.bfloat16)
     assert dtype in half_dtypes
     assert q.device.type == 'cuda' and q.size(-1) <= 256
@@ -79,15 +81,25 @@ def flash_attention(
     # params
     b, lq, lk, out_dtype = q.size(0), q.size(1), k.size(1), q.dtype
 
+    if q_lens is None and k_lens is None and FLASH_ATTN_3_AVAILABLE:
+        _print_attn_backend("fa3_dense")
+        return flash_attn_interface.flash_attn_func(
+            q=q if q.dtype in half_dtypes else q.to(dtype),
+            k=k if k.dtype in half_dtypes else k.to(dtype),
+            v=v if v.dtype in half_dtypes else v.to(dtype),
+            softmax_scale=softmax_scale,
+            causal=causal,
+            window_size=window_size,
+            deterministic=deterministic,
+        ).type(out_dtype)
+
     def half(x):
         return x if x.dtype in half_dtypes else x.to(dtype)
 
     # preprocess query
     if q_lens is None:
         q = half(q.flatten(0, 1))
-        q_lens = torch.tensor(
-            [lq] * b, dtype=torch.int32).to(
-                device=q.device, non_blocking=True)
+        q_lens = torch.full((b,), lq, dtype=torch.int32, device=q.device)
     else:
         q = half(torch.cat([u[:v] for u, v in zip(q, q_lens)]))
 
@@ -95,9 +107,7 @@ def flash_attention(
     if k_lens is None:
         k = half(k.flatten(0, 1))
         v = half(v.flatten(0, 1))
-        k_lens = torch.tensor(
-            [lk] * b, dtype=torch.int32).to(
-                device=k.device, non_blocking=True)
+        k_lens = torch.full((b,), lk, dtype=torch.int32, device=k.device)
     else:
         k = half(torch.cat([u[:v] for u, v in zip(k, k_lens)]))
         v = half(torch.cat([u[:v] for u, v in zip(v, k_lens)]))
@@ -116,6 +126,7 @@ def flash_attention(
     # apply attention
     if (version is None or version == 3) and FLASH_ATTN_3_AVAILABLE:
         # Note: dropout_p, window_size are not supported in FA3 now.
+        _print_attn_backend("fa3_varlen")
         x = flash_attn_interface.flash_attn_varlen_func(
             q=q,
             k=k,
@@ -131,6 +142,7 @@ def flash_attention(
             deterministic=deterministic).unflatten(0, (b, lq))
     else:
         assert FLASH_ATTN_2_AVAILABLE
+        _print_attn_backend("fa2_varlen")
         x = flash_attn.flash_attn_varlen_func(
             q=q,
             k=k,

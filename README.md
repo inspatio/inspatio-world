@@ -13,6 +13,7 @@
 
 - Python 3.10
 - CUDA 12.1
+- FlashAttention-3 is optional and requires Hopper GPUs such as H100/H800 and a CUDA toolkit with `nvcc >= 12.3`.
 
 **1. Create conda environment:**
 ```bash
@@ -24,6 +25,15 @@ conda activate inspatio_world
 ```bash
 pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
 ```
+
+**3. Optional: install FlashAttention-3 on Hopper GPUs:**
+```bash
+git clone https://github.com/Dao-AILab/flash-attention.git
+cd flash-attention/hopper
+python setup.py install
+```
+
+The inference code automatically uses FlashAttention-3 when `flash_attn_interface` can be imported and the current GPU is Hopper/H100. Otherwise it falls back to FlashAttention-2. Using FlashAttention-3 can further improve inference speed.
 
 ## Model Weights
 
