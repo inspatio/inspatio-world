@@ -1,0 +1,72 @@
+# LTX-2.3 Inference Configuration for InSpatio-World
+# Phase 1: Multi-step denoising (30 steps via LTX2Scheduler)
+# Phase 3: VFM 1-step (set vfm_adapter_path)
+#
+# Model: LTX-2.3 22B DiT (int8-quanto -> 11GB VRAM)
+# Text: Gemma-3 12B (or cached embeddings)
+# VAE: 128ch latent, 32x spatial compression, 8x temporal
+
+# ═══════════════════════════════════════════════════════
+# LTX-2 Model Paths
+# ═══════════════════════════════════════════════════════
+ltx_checkpoint_path: "./checkpoints/ltx-2.3-22b-dev.safetensors"
+ltx_text_encoder_path: "./checkpoints/gemma"
+ltx_quantization: "int8-quanto"   # "int8-quanto", "fp8-quanto", "none"
+ltx_lora_path: null               # Path to LoRA checkpoint (optional)
+use_cached_embeddings: true        # Skip loading Gemma, use precomputed .pt
+
+# ═══════════════════════════════════════════════════════
+# VFM v1f (Phase 3 — uncomment when adapter is trained)
+# ═══════════════════════════════════════════════════════
+# vfm_adapter_path: "./checkpoints/vfm/noise_adapter_step_05000.safetensors"
+# vfm_sigma_head_path: "./checkpoints/vfm/sigma_head_step_05000.safetensors"
+
+# ═══════════════════════════════════════════════════════
+# Depth Conditioning
+# ═══════════════════════════════════════════════════════
+ltx_depth_channels: 0              # 0 = no depth, >0 = concat depth latent channels
+# When depth is enabled, render_latent + mask_latent are concatenated with
+# the noisy latent and projected back to 128 channels via a learned linear layer.
+
+# ═══════════════════════════════════════════════════════
+# Inference Parameters
+# ═══════════════════════════════════════════════════════
+ltx_num_inference_steps: 30        # Denoising steps (30 for dev, 8 for distilled)
+num_frame_per_block: 1             # LTX generates 1 latent frame at a time
+                                   # (1 latent = 9 pixel frames via VAE)
+ltx_frame_seq_length: 336          # Tokens per frame (depends on resolution)
+                                   # 768x448 -> latent 24x14 = 336
+                                   # 512x288 -> latent 16x9 = 144
+
+guidance_scale: 4.0                # CFG guidance scale (1.0 = no guidance)
+negative_prompt: 'blurry, low quality, worst quality, ugly, deformed, watermark, text, static'
+
+# ═══════════════════════════════════════════════════════
+# Video Parameters
+# ═══════════════════════════════════════════════════════
+dataset:
+  video_size:
+  - 448
+  - 768
+  max_num_frames: 99999
+  min_num_frames: 99999
+  clip_root: /
+  annot_root: /
+  json_path: null
+  target_fps: 24
+  force_fps: false
+  skip_frms_num: 0
+  drop_last_frms_num: 0
+  random_start: true
+  traj_txt_path: ./traj/x_y_circle_cycle.txt
+  relative_to_source: false
+  rotation_only: false
+
+# ═══════════════════════════════════════════════════════
+# Resolution/Frame Rules (LTX-2 constraints)
+# ═══════════════════════════════════════════════════════
+# - Height and width must be divisible by 32
+# - Pixel frames must satisfy: (F - 1) % 8 == 0
+#   Valid pixel frame counts: 1, 9, 17, 25, 33, 41, ...
+#   Corresponding latent frames: 1, 2, 3, 4, 5, 6, ...
+# - Tokens per frame = (H/32) * (W/32)

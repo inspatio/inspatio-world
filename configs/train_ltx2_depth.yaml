@@ -1,0 +1,60 @@
+# ═══════════════════════════════════════════════════════════════
+# Stage 1: Train LTX-2.3 22B Depth-Conditioned LoRA
+# ═══════════════════════════════════════════════════════════════
+#
+# Train the 22B DiT to perform depth-guided novel-view synthesis
+# using InSpatio paired data (source + target + depth + camera).
+#
+# After this stage, evaluate quality. If good, proceed to Stage 2
+# (VFM v1f adapter training for 1-step generation).
+#
+# Usage:
+#   python scripts/train_ltx2_depth_lora.py \
+#       --checkpoint ./checkpoints/ltx-2.3-22b-dev.safetensors \
+#       --data-json /path/to/inspatio_pairs.json \
+#       --output-dir ./output/ltx2_depth_lora
+#
+# Training checklist (from CastleHill hard-won lessons):
+#   1. Overfit 10 samples first (loss should drop, reconstructions sharp)
+#   2. Check that depth conditioning affects output (compare with/without)
+#   3. Scale to full dataset only after overfit validation passes
+#   4. Use Muon optimizer if AdamW convergence is slow
+
+# Model
+checkpoint: "./checkpoints/ltx-2.3-22b-dev.safetensors"
+quantization: "int8-quanto"
+
+# LoRA
+lora_rank: 32
+lora_alpha: 32
+lora_targets:
+  - "to_q"
+  - "to_k"
+  - "to_v"
+  - "to_out.0"
+
+# Training
+lr: 5.0e-5
+steps: 5000
+batch_size: 1
+grad_accum: 4
+log_every: 50
+save_every: 500
+val_every: 500
+seed: 42
+
+# Data
+resolution: [448, 768]
+num_frames: 25  # (25-1)/8 + 1 = 4 latent frames
+
+# Depth conditioning
+# 128 channels from VAE-encoded render + 1 channel mask = 129
+depth_channels: 129
+
+# Output
+output_dir: "./output/ltx2_depth_lora"
+wandb_project: "inspatio-ltx2"
+
+# Device layout
+device: "cuda:0"       # Transformer (32GB GPU recommended)
+vae_device: "cuda:0"   # VAE (can be same or different GPU)
